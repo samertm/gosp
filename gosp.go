@@ -1,27 +1,28 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"github.com/samertm/gosp/parse"
 	"bufio"
-	"strings"
-	"log"
 	"container/list"
+	"fmt"
+	"github.com/samertm/gosp/parse"
+	"log"
+	"os"
+	"strings"
 )
 
 func printList(t *list.Element) {
 	fmt.Println("startlist")
 	for ; t != nil; t = t.Next() {
 		// my first go type switch!
-		switch t.Value.(type) {
+		switch ty := t.Value.(type) {
 		case *list.List:
 			l := t.Value.(*list.List)
 			printList(l.Front())
-		case string:
-			fmt.Println(t.Value)
+		case *parse.Atom:
+			a := t.Value.(*parse.Atom)
+			fmt.Println(a.Value, a.Type)
 		default:
-			fmt.Println("what!")
+			fmt.Println("error", ty)
 		}
 	}
 	fmt.Println("endlist")

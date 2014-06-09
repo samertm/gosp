@@ -5,9 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"strconv"
 )
 
 var _ = fmt.Printf // debugging; delete when done (which will be never, basically)
+
+type Atom struct {
+	Value interface{}
+	// possible types:
+	// int, float, string
+	Type  string
+}
 
 func tokenize(s string) []string {
 	parseString := strings.Replace(s, "(", " ( ", -1)
@@ -33,6 +41,26 @@ func pop(strs []string) (string, []string) {
 	}
 }
 
+// TODO find errors
+func atomize(t string) (a *Atom, e error) {
+	a = new(Atom)
+	i, err := strconv.Atoi(t)
+	if err == nil {
+		a.Value = i
+		a.Type = "int"
+		return
+	}
+	f, err := strconv.ParseFloat(t, 64)
+	if err == nil {
+		a.Value = f
+		a.Type = "float"
+		return
+	}
+	a.Value = t
+	a.Type = "symbol"
+	return
+}
+
 // TODO: MAKE THESE FUNCTION NAMES NOT TERRIBLE
 func recurse(s []string) (*list.List, []string, error) {
 	// s is the input stream, without the leading '(' token
@@ -41,14 +69,18 @@ func recurse(s []string) (*list.List, []string, error) {
 		if t == ")" {
 			return ast, s, nil
 		} else if t == "(" {
-			l, str, err := recurse(s)
-			s = str
+			l, strs, err := recurse(s)
+			s = strs
 			if err != nil {
 				return nil, s, err
 			}
 			ast.PushBack(l)
 		} else {
-			ast.PushBack(t)
+			a, err := atomize(t)
+			if err != nil {
+				return nil, s, err
+			}
+			ast.PushBack(a)
 		}
 	}
 	return nil, s, errors.New("Unbalanced parentheses")
