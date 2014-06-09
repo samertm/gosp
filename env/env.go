@@ -3,13 +3,14 @@ package env
 import (
 	"fmt"
 	"github.com/samertm/gosp/parse"
+	_ "log"
 )
 
 var Keys map[string]func([]*parse.Atom) *parse.Atom
 
 func init() {
-	Keys = map[string]func([]*parse.Atom) *parse.Atom {
-		"+": add,
+	Keys = map[string]func([]*parse.Atom) *parse.Atom{
+		"+":   add,
 	}
 }
 
@@ -21,4 +22,9 @@ func add(atoms []*parse.Atom) *parse.Atom {
 		acc += a.Value.(int)
 	}
 	return &parse.Atom{Value: acc, Type: "int"}
+}
+
+func Def(name string, val *parse.Atom) *parse.Atom {
+	Keys[name] = func([]*parse.Atom) *parse.Atom {return val}
+	return val
 }
