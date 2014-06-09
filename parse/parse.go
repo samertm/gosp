@@ -37,7 +37,7 @@ func pop(strs []string) (string, []string) {
 	} else if len(strs) == 1 {
 		return strs[0], nil
 	} else {
-		return strs[0], strs[1:]
+		return strs[0], strs[1:len(strs)]
 	}
 }
 
