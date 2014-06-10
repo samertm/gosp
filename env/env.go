@@ -10,7 +10,7 @@ var Keys map[string]func([]*parse.Atom) *parse.Atom
 
 func init() {
 	Keys = map[string]func([]*parse.Atom) *parse.Atom{
-		"+":   add,
+		"+": add,
 	}
 }
 
@@ -24,7 +24,3 @@ func add(atoms []*parse.Atom) *parse.Atom {
 	return &parse.Atom{Value: acc, Type: "int"}
 }
 
-func Def(name string, val *parse.Atom) *parse.Atom {
-	Keys[name] = func([]*parse.Atom) *parse.Atom {return val}
-	return val
-}

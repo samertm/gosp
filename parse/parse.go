@@ -13,7 +13,7 @@ var _ = fmt.Printf // debugging; delete when done (which will be never, basicall
 type Atom struct {
 	Value interface{}
 	// possible types:
-	// int, float, string
+	// int, float, string, function
 	Type  string
 }
 

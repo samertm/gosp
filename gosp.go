@@ -33,6 +33,40 @@ func printList(t *list.Element) {
 var _ = parse.Parse // debugging
 var _ = env.Keys    // debugging
 
+func Def(name string, val *parse.Atom) *parse.Atom {
+	switch val.Type {
+	case "function":
+		env.Keys[name] = val.Value.(func([]*parse.Atom) *parse.Atom)
+	default:
+		env.Keys[name] = func([]*parse.Atom) *parse.Atom { return val }
+	}
+	return val
+}
+
+func Lambda(args []string, body []interface{}) func([]*parse.Atom) *parse.Atom {
+	return func(atoms []*parse.Atom) *parse.Atom {
+		if len(args) != len(atoms) {
+			log.Fatal("mismatched arg lengths")
+		}
+		for i := 0; i < len(args); i++ {
+			Def(args[i], atoms[i])
+		}
+		if len(body) == 0 {
+			log.Fatal("no body")
+		}
+		var lastAtom *parse.Atom
+		for _, b := range body {
+			a, err := eval(b)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// TODO make more efficient
+			lastAtom = a
+		}
+		return lastAtom
+	}
+}
+
 func eval(i interface{}) (*parse.Atom, error) {
 	switch i.(type) {
 	case *list.List:
@@ -47,9 +81,24 @@ func eval(i interface{}) (*parse.Atom, error) {
 			name := e.Next().Value.(*parse.Atom).Value.(string)
 			val, err := eval(e.Next().Next().Value)
 			if err != nil {
-				log.Fatal("nope2")
+				return nil, err
 			}
-			return env.Def(name, val), nil
+			return Def(name, val), nil
+		case "lambda":
+			arglist := e.Next().Value.(*list.List)
+			args := make([]string, 0)
+			for a := arglist.Front(); a != nil; a = a.Next() {
+				args = append(args, a.Value.(*parse.Atom).Value.(string))
+			}
+			body := make([]interface{}, 0)
+			for b := e.Next().Next(); b != nil; b = b.Next() {
+				body = append(body, b.Value)
+			}
+			// taking liberties with the name "Atom"
+			return &parse.Atom{
+				Value: Lambda(args, body),
+				Type:  "function",
+			}, nil
 		default:
 			fun, ok := env.Keys[t.Value.(string)]
 			if ok == false {
@@ -60,7 +109,7 @@ func eval(i interface{}) (*parse.Atom, error) {
 				// eval step
 				val, err := eval(e.Value)
 				if err != nil {
-					log.Fatal(err)
+					return nil, err
 				}
 				args = append(args, val)
 			}
@@ -74,7 +123,7 @@ func eval(i interface{}) (*parse.Atom, error) {
 		case "symbol":
 			val, ok := env.Keys[a.Value.(string)]
 			if ok == false {
-				log.Fatal("nope1")
+				return nil, errors.New("Symbol not found")
 			}
 			return val([]*parse.Atom{}), nil
 		}
@@ -85,7 +134,7 @@ func eval(i interface{}) (*parse.Atom, error) {
 func main() {
 	r := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print("lisppppp> ")
+		fmt.Print("gosp> ")
 		input, err := r.ReadString('\n')
 		if err != nil {
 			log.Fatal("main", err)
@@ -96,6 +145,9 @@ func main() {
 			log.Fatal("main", err)
 		}
 		a, err := eval(ast)
+		if err != nil {
+			log.Fatal("main", err)
+		}
 		fmt.Println(a.Value)
 	}
 }
