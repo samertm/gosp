@@ -1,1 +1,6 @@
 Thought it would be a fun exercise to write a lisp interpreter in go...
+
+A little bit about the semantics of this lisp:
+
+* Function and variable names live in the same namespace/environment
+* Lexically scoped

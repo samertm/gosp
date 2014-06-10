@@ -4,8 +4,8 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 var _ = fmt.Printf // debugging; delete when done (which will be never, basically)
@@ -14,7 +14,7 @@ type Atom struct {
 	Value interface{}
 	// possible types:
 	// int, float, string, function
-	Type  string
+	Type string
 }
 
 func tokenize(s string) []string {
@@ -41,7 +41,6 @@ func pop(strs []string) (string, []string) {
 	}
 }
 
-// TODO find errors
 func atomize(t string) (a *Atom, e error) {
 	a = new(Atom)
 	i, err := strconv.Atoi(t)
@@ -61,15 +60,14 @@ func atomize(t string) (a *Atom, e error) {
 	return
 }
 
-// TODO: MAKE THESE FUNCTION NAMES NOT TERRIBLE
-func recurse(s []string) (*list.List, []string, error) {
+func genAst(s []string) (*list.List, []string, error) {
 	// s is the input stream, without the leading '(' token
 	ast := list.New()
 	for t, s := pop(s); t != ""; t, s = pop(s) {
 		if t == ")" {
 			return ast, s, nil
 		} else if t == "(" {
-			l, strs, err := recurse(s)
+			l, strs, err := genAst(s)
 			s = strs
 			if err != nil {
 				return nil, s, err
@@ -86,20 +84,22 @@ func recurse(s []string) (*list.List, []string, error) {
 	return nil, s, errors.New("Unbalanced parentheses")
 }
 
-func Parse(s string) (*list.List, *Atom,  error) {
+// returns *Atom or *list.List
+func Parse(s string) (interface{}, error) {
 	strs := tokenize(s)
 	t, strs := pop(strs)
 	if t != "(" {
 		// handle bare symbols
 		// only one token (the symbol) allowed
 		if len(strs) != 0 {
-			return nil, nil, errors.New("Too many tokens")
+			return nil, errors.New("Too many tokens")
 		}
-		return nil, &Atom{Value: t, Type: "symbol"}, nil
+		return &Atom{Value: t, Type: "symbol"}, nil
 	}
-	ast, _, err := recurse(strs)
+	var ast *list.List
+	ast, _, err := genAst(strs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return ast, nil, nil
+	return ast, nil
 }

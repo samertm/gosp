@@ -1,15 +1,16 @@
 package main
 
 import (
+	"github.com/samertm/gosp/env"
+	"github.com/samertm/gosp/parse"
+
 	"bufio"
 	"container/list"
 	"errors"
 	"fmt"
-	"github.com/samertm/gosp/env"
-	"github.com/samertm/gosp/parse"
-	"log"
 	"os"
 	"strings"
+	"strconv"
 )
 
 func printList(t *list.Element) {
@@ -33,34 +34,36 @@ func printList(t *list.Element) {
 func Def(name string, val *parse.Atom, s *env.Scope) *parse.Atom {
 	switch val.Type {
 	case "function":
-		s.Current[name] = val.Value.(func([]*parse.Atom) *parse.Atom)
+		s.Current[name] = val.Value.(func([]*parse.Atom) (*parse.Atom, error))
 	default:
-		s.Current[name] = func([]*parse.Atom) *parse.Atom { return val }
+		s.Current[name] = func([]*parse.Atom) (*parse.Atom, error) { return val, nil }
 	}
 	return val
 }
 
-func Lambda(args []string, body []interface{}, s *env.Scope) func([]*parse.Atom) *parse.Atom {
-	return func(atoms []*parse.Atom) *parse.Atom {
+func Lambda(args []string, body []interface{}, s *env.Scope) func([]*parse.Atom) (*parse.Atom, error) {
+	return func(atoms []*parse.Atom) (*parse.Atom, error) {
 		if len(args) != len(atoms) {
-			log.Fatal("mismatched arg lengths")
+			expectedLen := strconv.Itoa(len(args))
+			recievedLen := strconv.Itoa(len(atoms))
+			return nil, errors.New("Mismatched arg lengths: expected " + expectedLen + ", recieved " + recievedLen + " args")
 		}
 		for i := 0; i < len(args); i++ {
 			Def(args[i], atoms[i], s)
 		}
 		if len(body) == 0 {
-			log.Fatal("no body")
+			return nil, errors.New("No body for lambda")
 		}
 		var lastAtom *parse.Atom
 		for _, b := range body {
 			a, err := eval(b, s)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 			// TODO make more efficient
 			lastAtom = a
 		}
-		return lastAtom
+		return lastAtom, nil
 	}
 }
 
@@ -110,7 +113,8 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 				}
 				args = append(args, val)
 			}
-			return fun(args), nil
+			// fun returns two values
+			return fun(args)
 		}
 	case *parse.Atom:
 		a := i.(*parse.Atom)
@@ -120,9 +124,9 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 		case "symbol":
 			val, ok := env.Find(s, a.Value.(string))
 			if ok == false {
-				return nil, errors.New("Symbol not found")
+				return nil, errors.New("Symbol '" + a.Value.(string) +"' not found")
 			}
-			return val([]*parse.Atom{}), nil
+			return val([]*parse.Atom{})
 		}
 	}
 	return nil, errors.New("nope")
@@ -138,30 +142,16 @@ func main() {
 			continue
 		}
 		input = strings.TrimSpace(input)
-		ast, sym, err := parse.Parse(input)
+		placeholder, err := parse.Parse(input)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		var a *parse.Atom
-		if ast != nil {
-			a, err = eval(ast, env.GlobalScope)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-		} else if sym != nil {
-			a, err = eval(sym, env.GlobalScope)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-		} else {
-			// error :O
-			fmt.Println("ast and sym nil")
+		a, err := eval(placeholder, env.GlobalScope)
+		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 		fmt.Println(a.Value)
 	}
 }
-
