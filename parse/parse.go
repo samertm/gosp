@@ -86,18 +86,20 @@ func recurse(s []string) (*list.List, []string, error) {
 	return nil, s, errors.New("Unbalanced parentheses")
 }
 
-func Parse(s string) (*list.List, error) {
+func Parse(s string) (*list.List, *Atom,  error) {
 	strs := tokenize(s)
-	if len(strs) < 3 {
-		return nil, errors.New("Expected > 2 tokens")
-	}
 	t, strs := pop(strs)
 	if t != "(" {
-		return nil, errors.New("Expected '('")
+		// handle bare symbols
+		// only one token (the symbol) allowed
+		if len(strs) != 0 {
+			return nil, nil, errors.New("Too many tokens")
+		}
+		return nil, &Atom{Value: t, Type: "symbol"}, nil
 	}
 	ast, _, err := recurse(strs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return ast, nil
+	return ast, nil, nil
 }

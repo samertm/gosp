@@ -13,7 +13,7 @@ import (
 )
 
 func printList(t *list.Element) {
-	fmt.Println("startlist")
+	fmt.Println("(")
 	for ; t != nil; t = t.Next() {
 		// my first go type switch!
 		switch ty := t.Value.(type) {
@@ -22,12 +22,12 @@ func printList(t *list.Element) {
 			printList(l.Front())
 		case *parse.Atom:
 			a := t.Value.(*parse.Atom)
-			fmt.Println(a.Value, a.Type)
+			fmt.Print(a.Value)
 		default:
 			fmt.Println("error", ty)
 		}
 	}
-	fmt.Println("endlist")
+	fmt.Println(")")
 }
 
 var _ = parse.Parse // debugging
@@ -141,14 +141,27 @@ func main() {
 			continue
 		}
 		input = strings.TrimSpace(input)
-		ast, err := parse.Parse(input)
+		ast, sym, err := parse.Parse(input)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		a, err := eval(ast)
-		if err != nil {
-			fmt.Println(err)
+		var a *parse.Atom
+		if ast != nil {
+			a, err = eval(ast)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+		} else if sym != nil {
+			a, err = eval(sym)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+		} else {
+			// error :O
+			fmt.Println("ast and sym nil")
 			continue
 		}
 		fmt.Println(a.Value)
