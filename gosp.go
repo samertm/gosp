@@ -127,6 +127,8 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 				return nil, errors.New("Symbol '" + a.Value.(string) +"' not found")
 			}
 			return val([]*parse.Atom{})
+		case "nil":
+			return a, nil
 		}
 	}
 	return nil, errors.New("nope")

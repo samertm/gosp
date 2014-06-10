@@ -13,7 +13,7 @@ var _ = fmt.Printf // debugging; delete when done (which will be never, basicall
 type Atom struct {
 	Value interface{}
 	// possible types:
-	// int, float, string, function
+	// int, float, string, function, nil
 	Type string
 }
 
@@ -55,6 +55,11 @@ func atomize(t string) (a *Atom, e error) {
 		a.Type = "float"
 		return
 	}
+	// keyword nil
+	if t == "nil" {
+		a.Type = "nil"
+		return
+	}
 	a.Value = t
 	a.Type = "symbol"
 	return
@@ -94,7 +99,7 @@ func Parse(s string) (interface{}, error) {
 		if len(strs) != 0 {
 			return nil, errors.New("Too many tokens")
 		}
-		return &Atom{Value: t, Type: "symbol"}, nil
+		return atomize(t)
 	}
 	var ast *list.List
 	ast, _, err := genAst(strs)
