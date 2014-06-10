@@ -142,13 +142,12 @@ func main() {
 			continue
 		}
 		input = strings.TrimSpace(input)
-		// TODO come up with a better name than 'placeholder'
-		placeholder, err := parse.Parse(input)
+		astOrSymbol, err := parse.Parse(input)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		a, err := eval(placeholder, env.GlobalScope)
+		a, err := eval(astOrSymbol, env.GlobalScope)
 		if err != nil {
 			fmt.Println(err)
 			continue
