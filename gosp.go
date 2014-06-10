@@ -67,6 +67,14 @@ func Lambda(args []string, body []interface{}, s *env.Scope) func([]*parse.Atom)
 	}
 }
 
+// then-stmt and els-stmt passed in as interface{} to avoid evaluation
+func If(test *parse.Atom, thenStmt, elseStmt interface{}, s *env.Scope) (*parse.Atom, error) {
+	if test.Type != "nil" {
+		return eval(thenStmt, s)
+	}
+	return eval(elseStmt, s)
+}
+
 func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 	switch i.(type) {
 	case *list.List:
@@ -99,6 +107,14 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 				Value: Lambda(args, body, env.New(s)),
 				Type:  "function",
 			}, nil
+		case "if":
+			test, err := eval(e.Next().Value, s)
+			if err != nil {
+				return nil, err
+			}
+			thenStmt := e.Next().Next().Value
+			elseStmt := e.Next().Next().Next().Value
+			return If(test, thenStmt, elseStmt, s)
 		default:
 			fun, ok := env.Find(s, t.Value.(string))
 			if ok == false {
@@ -129,9 +145,13 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 			return val([]*parse.Atom{})
 		case "nil":
 			return a, nil
+		case "t":
+			return a, nil
+		default:
+			return nil, errors.New("Type (" + a.Type + ") not recognized")
 		}
 	}
-	return nil, errors.New("nope")
+	return nil, errors.New("End of eval error")
 }
 
 func main() {

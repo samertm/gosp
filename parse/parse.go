@@ -13,8 +13,16 @@ var _ = fmt.Printf // debugging; delete when done (which will be never, basicall
 type Atom struct {
 	Value interface{}
 	// possible types:
-	// int, float, string, function, nil
+	// int, float, string, function, nil, t
 	Type string
+}
+
+func Nil() *Atom {
+	return &Atom{Value: "nil", Type: "nil"}
+}
+
+func T() *Atom {
+	return &Atom{Value: "t", Type: "t"}
 }
 
 func tokenize(s string) []string {
@@ -55,13 +63,16 @@ func atomize(t string) (a *Atom, e error) {
 		a.Type = "float"
 		return
 	}
-	// keyword nil
-	if t == "nil" {
-		a.Type = "nil"
-		return
-	}
+	// keywords
+	switch t {
+	case "nil":
+		a = Nil()
+	case "t":
+		a = T()
+	default:		
 	a.Value = t
 	a.Type = "symbol"
+	}
 	return
 }
 
