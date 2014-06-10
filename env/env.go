@@ -3,15 +3,15 @@ package env
 import (
 	"github.com/samertm/gosp/parse"
 
-	"fmt"
 	"errors"
+	"fmt"
 )
 
 type Env map[string]func([]*parse.Atom) (*parse.Atom, error)
 
 type Scope struct {
 	Current Env
-	Parent *Scope
+	Parent  *Scope
 }
 
 var GlobalScope *Scope
@@ -22,7 +22,7 @@ func init() {
 	GlobalKeys = Env{
 		"+": add,
 	}
-	GlobalScope  = &Scope{Current: GlobalKeys, Parent: nil}
+	GlobalScope = &Scope{Current: GlobalKeys, Parent: nil}
 }
 
 var _ = fmt.Print

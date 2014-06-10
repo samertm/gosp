@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"strconv"
 )
 
 func printList(t *list.Element) {
@@ -31,50 +30,6 @@ func printList(t *list.Element) {
 	fmt.Println(")")
 }
 
-func Def(name string, val *parse.Atom, s *env.Scope) *parse.Atom {
-	switch val.Type {
-	case "function":
-		s.Current[name] = val.Value.(func([]*parse.Atom) (*parse.Atom, error))
-	default:
-		s.Current[name] = func([]*parse.Atom) (*parse.Atom, error) { return val, nil }
-	}
-	return val
-}
-
-func Lambda(args []string, body []interface{}, s *env.Scope) func([]*parse.Atom) (*parse.Atom, error) {
-	return func(atoms []*parse.Atom) (*parse.Atom, error) {
-		if len(args) != len(atoms) {
-			expectedLen := strconv.Itoa(len(args))
-			recievedLen := strconv.Itoa(len(atoms))
-			return nil, errors.New("Mismatched arg lengths: expected " + expectedLen + ", recieved " + recievedLen + " args")
-		}
-		for i := 0; i < len(args); i++ {
-			Def(args[i], atoms[i], s)
-		}
-		if len(body) == 0 {
-			return nil, errors.New("No body for lambda")
-		}
-		var lastAtom *parse.Atom
-		for _, b := range body {
-			a, err := eval(b, s)
-			if err != nil {
-				return nil, err
-			}
-			// TODO make more efficient
-			lastAtom = a
-		}
-		return lastAtom, nil
-	}
-}
-
-// then-stmt and els-stmt passed in as interface{} to avoid evaluation
-func If(test *parse.Atom, thenStmt, elseStmt interface{}, s *env.Scope) (*parse.Atom, error) {
-	if test.Type != "nil" {
-		return eval(thenStmt, s)
-	}
-	return eval(elseStmt, s)
-}
-
 func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 	switch i.(type) {
 	case *list.List:
@@ -84,54 +39,24 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 			return nil, errors.New("Expected symbol")
 		}
 		// built ins
-		switch t.Value.(string) {
-		case "def":
-			name := e.Next().Value.(*parse.Atom).Value.(string)
-			val, err := eval(e.Next().Next().Value, s)
-			if err != nil {
-				return nil, err
-			}
-			return Def(name, val, s), nil
-		case "lambda":
-			arglist := e.Next().Value.(*list.List)
-			args := make([]string, 0)
-			for a := arglist.Front(); a != nil; a = a.Next() {
-				args = append(args, a.Value.(*parse.Atom).Value.(string))
-			}
-			body := make([]interface{}, 0)
-			for b := e.Next().Next(); b != nil; b = b.Next() {
-				body = append(body, b.Value)
-			}
-			// taking liberties with the name "Atom"
-			return &parse.Atom{
-				Value: Lambda(args, body, env.New(s)),
-				Type:  "function",
-			}, nil
-		case "if":
-			test, err := eval(e.Next().Value, s)
-			if err != nil {
-				return nil, err
-			}
-			thenStmt := e.Next().Next().Value
-			elseStmt := e.Next().Next().Next().Value
-			return If(test, thenStmt, elseStmt, s)
-		default:
-			fun, ok := env.Find(s, t.Value.(string))
-			if ok == false {
-				return nil, errors.New("Symbol not in function table")
-			}
-			args := make([]*parse.Atom, 0)
-			for e = e.Next(); e != nil; e = e.Next() {
-				// eval step
-				val, err := eval(e.Value, s)
-				if err != nil {
-					return nil, err
-				}
-				args = append(args, val)
-			}
-			// fun returns two values
-			return fun(args)
+		if builtin, ok := builtins[t.Value.(string)]; ok {
+			return builtin(e, s)
 		}
+		fun, ok := env.Find(s, t.Value.(string))
+		if ok == false {
+			return nil, errors.New("Symbol not in function table")
+		}
+		args := make([]*parse.Atom, 0)
+		for e = e.Next(); e != nil; e = e.Next() {
+			// eval step
+			val, err := eval(e.Value, s)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, val)
+		}
+		// fun returns two values
+		return fun(args)
 	case *parse.Atom:
 		a := i.(*parse.Atom)
 		switch a.Type {
@@ -140,7 +65,7 @@ func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 		case "symbol":
 			val, ok := env.Find(s, a.Value.(string))
 			if ok == false {
-				return nil, errors.New("Symbol '" + a.Value.(string) +"' not found")
+				return nil, errors.New("Symbol '" + a.Value.(string) + "' not found")
 			}
 			return val([]*parse.Atom{})
 		case "nil":

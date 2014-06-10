@@ -30,7 +30,7 @@ func tokenize(s string) []string {
 	parseString = strings.Replace(parseString, ")", " ) ", -1)
 	parsed := strings.Split(parseString, " ")
 	// remove empty strings (split does not remove them)
-	newParsed := make([]string, 0)
+	newParsed := make([]string, 0, len(parsed))
 	for _, s := range parsed {
 		if s != "" {
 			newParsed = append(newParsed, s)
@@ -69,9 +69,9 @@ func atomize(t string) (a *Atom, e error) {
 		a = Nil()
 	case "t":
 		a = T()
-	default:		
-	a.Value = t
-	a.Type = "symbol"
+	default:
+		a.Value = t
+		a.Type = "symbol"
 	}
 	return
 }
@@ -93,6 +93,7 @@ func genAst(s []string) (*list.List, []string, error) {
 			a, err := atomize(t)
 			if err != nil {
 				return nil, s, err
+
 			}
 			ast.PushBack(a)
 		}
