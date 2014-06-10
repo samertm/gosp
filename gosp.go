@@ -142,6 +142,7 @@ func main() {
 			continue
 		}
 		input = strings.TrimSpace(input)
+		// TODO come up with a better name than 'placeholder'
 		placeholder, err := parse.Parse(input)
 		if err != nil {
 			fmt.Println(err)
