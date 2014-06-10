@@ -137,16 +137,19 @@ func main() {
 		fmt.Print("gosp> ")
 		input, err := r.ReadString('\n')
 		if err != nil {
-			log.Fatal("main", err)
+			fmt.Println(err)
+			continue
 		}
 		input = strings.TrimSpace(input)
 		ast, err := parse.Parse(input)
 		if err != nil {
-			log.Fatal("main", err)
+			fmt.Println(err)
+			continue
 		}
 		a, err := eval(ast)
 		if err != nil {
-			log.Fatal("main", err)
+			fmt.Println(err)
+			continue
 		}
 		fmt.Println(a.Value)
 	}
