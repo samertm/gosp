@@ -30,33 +30,30 @@ func printList(t *list.Element) {
 	fmt.Println(")")
 }
 
-var _ = parse.Parse // debugging
-var _ = env.Keys    // debugging
-
-func Def(name string, val *parse.Atom) *parse.Atom {
+func Def(name string, val *parse.Atom, s *env.Scope) *parse.Atom {
 	switch val.Type {
 	case "function":
-		env.Keys[name] = val.Value.(func([]*parse.Atom) *parse.Atom)
+		s.Current[name] = val.Value.(func([]*parse.Atom) *parse.Atom)
 	default:
-		env.Keys[name] = func([]*parse.Atom) *parse.Atom { return val }
+		s.Current[name] = func([]*parse.Atom) *parse.Atom { return val }
 	}
 	return val
 }
 
-func Lambda(args []string, body []interface{}) func([]*parse.Atom) *parse.Atom {
+func Lambda(args []string, body []interface{}, s *env.Scope) func([]*parse.Atom) *parse.Atom {
 	return func(atoms []*parse.Atom) *parse.Atom {
 		if len(args) != len(atoms) {
 			log.Fatal("mismatched arg lengths")
 		}
 		for i := 0; i < len(args); i++ {
-			Def(args[i], atoms[i])
+			Def(args[i], atoms[i], s)
 		}
 		if len(body) == 0 {
 			log.Fatal("no body")
 		}
 		var lastAtom *parse.Atom
 		for _, b := range body {
-			a, err := eval(b)
+			a, err := eval(b, s)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -67,7 +64,7 @@ func Lambda(args []string, body []interface{}) func([]*parse.Atom) *parse.Atom {
 	}
 }
 
-func eval(i interface{}) (*parse.Atom, error) {
+func eval(i interface{}, s *env.Scope) (*parse.Atom, error) {
 	switch i.(type) {
 	case *list.List:
 		e := i.(*list.List).Front()
@@ -79,11 +76,11 @@ func eval(i interface{}) (*parse.Atom, error) {
 		switch t.Value.(string) {
 		case "def":
 			name := e.Next().Value.(*parse.Atom).Value.(string)
-			val, err := eval(e.Next().Next().Value)
+			val, err := eval(e.Next().Next().Value, s)
 			if err != nil {
 				return nil, err
 			}
-			return Def(name, val), nil
+			return Def(name, val, s), nil
 		case "lambda":
 			arglist := e.Next().Value.(*list.List)
 			args := make([]string, 0)
@@ -96,18 +93,18 @@ func eval(i interface{}) (*parse.Atom, error) {
 			}
 			// taking liberties with the name "Atom"
 			return &parse.Atom{
-				Value: Lambda(args, body),
+				Value: Lambda(args, body, env.New(s)),
 				Type:  "function",
 			}, nil
 		default:
-			fun, ok := env.Keys[t.Value.(string)]
+			fun, ok := env.Find(s, t.Value.(string))
 			if ok == false {
 				return nil, errors.New("Symbol not in function table")
 			}
 			args := make([]*parse.Atom, 0)
 			for e = e.Next(); e != nil; e = e.Next() {
 				// eval step
-				val, err := eval(e.Value)
+				val, err := eval(e.Value, s)
 				if err != nil {
 					return nil, err
 				}
@@ -121,7 +118,7 @@ func eval(i interface{}) (*parse.Atom, error) {
 		case "int":
 			return a, nil
 		case "symbol":
-			val, ok := env.Keys[a.Value.(string)]
+			val, ok := env.Find(s, a.Value.(string))
 			if ok == false {
 				return nil, errors.New("Symbol not found")
 			}
@@ -148,13 +145,13 @@ func main() {
 		}
 		var a *parse.Atom
 		if ast != nil {
-			a, err = eval(ast)
+			a, err = eval(ast, env.GlobalScope)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
 		} else if sym != nil {
-			a, err = eval(sym)
+			a, err = eval(sym, env.GlobalScope)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -167,3 +164,4 @@ func main() {
 		fmt.Println(a.Value)
 	}
 }
+
